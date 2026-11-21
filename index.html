@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>สถิติคุณภาพน้ำประปาย้อนหลัง</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Cpath d=%22M8 1C5 6 3 8.5 3 10.5a5 5 0 0 0 10 0C13 8.5 11 6 8 1z%22 fill=%22%232a6fb0%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --color-fg:#1f1f1f;--color-fg-muted:#5f5f5f;--color-bg:#ffffff;--color-panel:#f7f7f5;--color-border-line:#dedcd6;
+  --color-ok:#2e7d32;--color-warn:#b26a00;--color-bad:#c0392b;
+  --font-anthropic-sans:"Sarabun","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;
+  --font-anthropic-serif:"Sarabun","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;
+  --cds-font-size-caption:13px;--cds-font-size-body:15px;--cds-font-size-heading:18px;--cds-font-size-title:30px;--cds-font-weight-medium:600;
+  --cds-gap-xs:4px;--cds-gap-sm:8px;--cds-gap-md:12px;--cds-gap-lg:20px;--cds-gap-xl:32px;
+  --cds-pad-sm:8px;--cds-pad-md:12px;--cds-pad-lg:16px;--cds-radius:8px;
+  --cds-chart-muted:#c4c2bc;--cds-chart-status-critical:#c0392b;--cds-chart-grid:#ecebe7;--cds-chart-axis:#c9c7c1;--cds-chart-reference:#8a8883;
+  --cds-text-secondary:#6b6964;--cds-surface-popover:#ffffff;--cds-border:#d6d4ce;--cds-shadow-popover:0 4px 14px rgba(0,0,0,.12);
+  --c1:#2a6fb0;--c2:#e67e22;--c3:#2e9e5b;--c4:#8e44ad;--c5:#c2185b;--c6:#16a0a0;--c7:#9a7d0a;--c8:#5d6d7e;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-fg:#ececea;--color-fg-muted:#a8a6a0;--color-bg:#1c1c1b;--color-panel:#252523;--color-border-line:#3a3a37;
+    --cds-chart-muted:#5a5955;--cds-chart-grid:#2f2f2d;--cds-chart-axis:#4a4945;--cds-chart-reference:#9a9893;
+    --cds-text-secondary:#a8a6a0;--cds-surface-popover:#2a2a28;--cds-border:#454540;--cds-shadow-popover:0 4px 14px rgba(0,0,0,.5);
+    --c1:#5b9be0;--c2:#f0a050;--c3:#4cc27e;--c4:#b77ad6;--c5:#e45c92;--c6:#3cc4c4;--c7:#d1b23a;--c8:#9aa8b5;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);line-height:1.5}
+#dash-root{max-width:1200px;margin:0 auto;padding:24px 16px 48px}
+.dash-select{font:inherit;font-size:var(--cds-font-size-body);color:var(--color-fg);background-color:var(--color-bg);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:6px 8px;max-width:100%}
+.wq-load-error{background:#fdecea;color:#8a1c12;border:1px solid #f5c2bd;border-radius:8px;padding:12px 16px;margin-bottom:16px}
+.wq-footer{margin-top:32px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.wq-footer a{color:inherit}
+</style>
+</head>
+<body>
+<div id="dash-root">
+<div class="wq-load-error" id="load-error" hidden>โหลดไฟล์ข้อมูลไม่สำเร็จ ถ้าเปิดไฟล์ index.html จากเครื่องโดยตรง ให้เปิดผ่านเว็บเซิร์ฟเวอร์แทน (ดู README.md) หรือใช้หน้า GitHub Pages</div>
+<style>
+.wq{display:grid;gap:var(--cds-gap-lg);font-family:var(--font-anthropic-sans);color:var(--color-fg);font-size:var(--cds-font-size-body)}
+.wq-title{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0}
+.wq-lead{margin:0;max-width:70ch}
+.wq-muted{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);margin:0}
+.wq-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);min-width:0}
+.wq-h{font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);margin:0 0 var(--cds-gap-sm)}
+.wq-filters{display:grid;gap:var(--cds-gap-md);grid-template-columns:repeat(auto-fit,minmax(170px,1fr));align-items:end}
+.wq-field{display:grid;gap:var(--cds-gap-xs);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);min-width:0}
+.wq-field .dash-select,.wq-date{width:100%;min-width:0;box-sizing:border-box}
+.wq-date{font:inherit;color:var(--color-fg);background-color:var(--color-bg);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:6px 8px}
+.wq-btn{font:inherit;font-size:var(--cds-font-size-caption);color:var(--color-fg);background-color:var(--color-bg);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:6px 12px;cursor:pointer;text-decoration:none;display:inline-block}
+.wq-btn-main{background-color:var(--color-fg);color:var(--color-bg);border-color:var(--color-fg);font-size:var(--cds-font-size-body)}
+.wq-row{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm);align-items:center}
+.wq-picker{margin-top:var(--cds-gap-md)}
+.wq-picker summary{cursor:pointer}
+.wq-groups{display:grid;gap:var(--cds-gap-md);grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-top:var(--cds-gap-md)}
+.wq-group{border:0;padding:0;margin:0;display:grid;gap:2px;align-content:start;min-width:0}
+.wq-group legend{font-weight:var(--cds-font-weight-medium);padding:0;margin-bottom:4px}
+.wq-chk{display:flex;gap:6px;align-items:baseline;font-size:var(--cds-font-size-caption)}
+.wq-tiles{display:grid;gap:var(--cds-gap-md);grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.wq-tile-label{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.wq-big{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums}
+.wq-mid{font-size:var(--cds-font-size-heading);font-variant-numeric:tabular-nums}
+.wq-chart{position:relative;min-height:260px}
+.wq-chart svg{display:block}
+.wq-chart .wq-axis text{fill:var(--cds-text-secondary);font-size:var(--cds-font-size-caption);font-family:var(--font-anthropic-sans)}
+.wq-chart .wq-axis path,.wq-chart .wq-axis line{stroke:var(--cds-chart-axis)}
+.wq-chart .wq-grid line{stroke:var(--cds-chart-grid)}
+.wq-tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);box-shadow:var(--cds-shadow-popover);border-radius:var(--cds-radius);padding:6px 10px;font-size:var(--cds-font-size-caption);white-space:nowrap}
+.wq-scroll{overflow-x:auto}
+.wq-table{border-collapse:collapse;width:100%;font-size:var(--cds-font-size-caption);font-variant-numeric:tabular-nums}
+.wq-table th,.wq-table td{padding:6px 10px;border-bottom:1px solid var(--color-border-line);text-align:left;white-space:nowrap}
+.wq-table th{color:var(--color-fg-muted);font-weight:var(--cds-font-weight-medium)}
+.wq-table .wq-num{text-align:right}
+.wq-table .wq-bad td:last-child{color:var(--color-bad);font-weight:var(--cds-font-weight-medium)}
+.wq-preview{display:block;max-width:100%;width:420px;height:auto;border:1px solid var(--color-border-line);margin-top:var(--cds-gap-md)}
+.wq-search{max-width:280px;flex:1 1 180px}
+.wq-list{display:grid;gap:2px;max-height:260px;overflow:auto;margin-top:var(--cds-gap-sm);padding:var(--cds-pad-sm,8px);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background-color:var(--color-bg)}
+.wq-list-cols{grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));column-gap:var(--cds-gap-md);align-content:start}
+.wq-sw{display:inline-block;width:10px;height:10px;border-radius:2px;flex:none;align-self:center}
+.wq-legend{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs) var(--cds-gap-md);margin:var(--cds-gap-md) 0;font-size:var(--cds-font-size-caption)}
+.wq-leg{display:inline-flex;gap:6px;align-items:center}
+.wq-panels{display:grid;gap:var(--cds-gap-lg);grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));min-height:240px}
+.wq-panel{position:relative;min-width:0}
+.wq-panel-h{font-weight:var(--cds-font-weight-medium);margin-bottom:var(--cds-gap-xs)}
+.wq-panel-h span{color:var(--color-fg-muted);font-weight:400;font-size:var(--cds-font-size-caption)}
+.wq-panel .wq-axis text{fill:var(--cds-text-secondary);font-size:var(--cds-font-size-caption);font-family:var(--font-anthropic-sans)}
+.wq-panel .wq-axis path,.wq-panel .wq-axis line{stroke:var(--cds-chart-axis)}
+.wq-panel .wq-grid line{stroke:var(--cds-chart-grid)}
+.wq-panel svg{display:block}
+.wq-seg{display:inline-flex;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);overflow:hidden}
+.wq-seg button{font:inherit;font-size:var(--cds-font-size-caption);padding:5px 10px;border:0;border-right:1px solid var(--color-border-line);background-color:var(--color-bg);color:var(--color-fg);cursor:pointer}
+.wq-seg button:last-child{border-right:0}
+.wq-seg button[aria-pressed="true"]{background-color:var(--color-fg);color:var(--color-bg)}
+.wq-tip .wq-leg{display:flex}
+.wq-ls{display:inline-block;flex:none;align-self:center}
+.wq-combined{position:relative;min-width:0}
+.wq-combined .wq-axis text{fill:var(--cds-text-secondary);font-size:var(--cds-font-size-caption);font-family:var(--font-anthropic-sans)}
+.wq-combined .wq-axis path,.wq-combined .wq-axis line{stroke:var(--cds-chart-axis)}
+.wq-combined .wq-grid line{stroke:var(--cds-chart-grid)}
+.wq-combined .wq-ref-label{fill:var(--cds-text-secondary);font-size:var(--cds-font-size-caption);font-family:var(--font-anthropic-sans)}
+.wq-combined svg{display:block}
+.wq-notes p{margin:var(--cds-gap-sm) 0 0;max-width:80ch}
+</style>
+<div class="wq">
+  <header>
+    <h1 class="wq-title" id="title">สถิติคุณภาพน้ำประปาย้อนหลัง</h1>
+    <p class="wq-lead" id="lead-some" hidden>ในตัวกรองที่เลือกมีผลตรวจไม่เป็นไปตามเกณฑ์ <b data-draw="ov" data-source="overview" data-field="exceed" data-row="0">—</b> รายการ ใน <b data-draw="ov" data-source="overview" data-field="exceedParams" data-row="0">—</b> พารามิเตอร์ มากที่สุดคือ <b data-draw="ov" data-source="overview" data-field="top" data-row="0">—</b> (<span data-draw="ov" data-source="overview" data-field="topCount" data-row="0">—</span> รายการ)</p>
+    <p class="wq-lead" id="lead-none" hidden>ในตัวกรองที่เลือก ผลตรวจทุกรายการที่มีเกณฑ์กำหนดเป็นไปตามเกณฑ์</p>
+    <p class="wq-lead" id="lead-empty" hidden>ไม่มีตัวอย่างน้ำในตัวกรองที่เลือก</p>
+  </header>
+
+  <section class="wq-card" id="filters">
+    <h2 class="wq-h">ตัวกรอง</h2>
+    <div class="wq-filters">
+      <label class="wq-field">ตั้งแต่วันที่<input class="wq-date" type="date" data-param="from" min="2000-01-01" max="2100-12-31"></label>
+      <label class="wq-field">ถึงวันที่<input class="wq-date" type="date" data-param="to" min="2000-01-01" max="2100-12-31"></label>
+      <label class="wq-field">ประเภทงาน<select class="dash-select" data-draw="job" data-source="samples"></select></label>
+      <label class="wq-field">สาขา<select class="dash-select" data-draw="branch" data-source="samples"></select></label>
+      <button class="wq-btn" type="button" data-act="reset">ล้างตัวกรอง</button>
+    </div>
+    <details class="wq-picker" id="param-picker">
+      <summary>เลือกพารามิเตอร์ (เลือกอยู่ <span data-draw="ov" data-source="overview" data-field="params" data-row="0">—</span> รายการ)</summary>
+      <div class="wq-row" style="margin-top:var(--cds-gap-md)">
+        <button class="wq-btn" type="button" data-ps="all">ทั้งหมด</button>
+        <button class="wq-btn" type="button" data-ps="crit">เฉพาะที่มีเกณฑ์กำหนด</button>
+        <button class="wq-btn" type="button" data-ps="none">ไม่เลือก</button>
+      </div>
+      <div class="wq-groups" data-draw="plist" data-source="criteria"></div>
+    </details>
+    <details class="wq-picker" id="site-picker" open>
+      <summary>สถานที่ (<span data-draw="count" data-kind="sites">—</span>)</summary>
+      <p class="wq-muted" style="margin-top:var(--cds-gap-sm)">ติ๊กเลือกได้สูงสุด 8 แห่งเพื่อเปรียบเทียบ แต่ละแห่งเป็นเส้นคนละสีในกราฟ ถ้าไม่เลือกจะรวมทุกสถานที่เป็นเส้นเดียว รายการแสดงตามช่วงวันที่ ประเภทงาน และสาขาที่เลือก ตัวเลขในวงเล็บคือจำนวนตัวอย่าง</p>
+      <div class="wq-row" style="margin-top:var(--cds-gap-sm)">
+        <input class="wq-date wq-search" type="search" data-search="sitelist" placeholder="ค้นหาสถานที่" aria-label="ค้นหาสถานที่">
+        <button class="wq-btn" type="button" data-act="clear-sites">ล้างสถานที่ที่เลือก</button>
+      </div>
+      <div class="wq-list wq-list-cols" data-draw="sitelist" data-source="samples"></div>
+    </details>
+  </section>
+
+  <section class="wq-tiles" id="overview">
+    <div class="wq-card"><div class="wq-tile-label">ตัวอย่างน้ำ</div><div class="wq-big" data-draw="ov" data-source="overview" data-field="samples" data-row="0">—</div></div>
+    <div class="wq-card"><div class="wq-tile-label">สถานที่เก็บตัวอย่าง</div><div class="wq-big" data-draw="ov" data-source="overview" data-field="sites" data-row="0">—</div></div>
+    <div class="wq-card"><div class="wq-tile-label">ช่วงวันที่รับตัวอย่าง</div><div class="wq-mid"><span data-draw="ov" data-source="overview" data-field="first" data-row="0">—</span> – <span data-draw="ov" data-source="overview" data-field="last" data-row="0">—</span></div></div>
+    <div class="wq-card"><div class="wq-tile-label">ผลตรวจไม่เป็นไปตามเกณฑ์ (รายการ)</div><div class="wq-big" data-draw="ov" data-source="overview" data-field="exceed" data-row="0">—</div></div>
+  </section>
+
+  <section class="wq-card" id="trend">
+    <h2 class="wq-h">เปรียบเทียบค่าเฉลี่ยรายเดือน</h2>
+    <details class="wq-picker" id="chart-params" open>
+      <summary>พารามิเตอร์ในกราฟ (เลือกอยู่ <span data-draw="count" data-kind="cps">—</span> จากสูงสุด 6)</summary>
+      <div class="wq-row" style="margin-top:var(--cds-gap-sm)">
+        <input class="wq-date wq-search" type="search" data-search="cplist" placeholder="ค้นหาพารามิเตอร์" aria-label="ค้นหาพารามิเตอร์">
+      </div>
+      <div class="wq-list wq-list-cols" data-draw="cplist" data-source="criteria"></div>
+    </details>
+    <div class="wq-row" id="chart-mode" style="margin-top:var(--cds-gap-md);gap:var(--cds-gap-md)">
+      <span class="wq-row" style="gap:var(--cds-gap-xs)"><span class="wq-muted">รูปแบบ</span>
+        <span class="wq-seg" role="group" aria-label="รูปแบบกราฟ"><button type="button" data-set="layout" data-val="split">แยกกราฟ</button><button type="button" data-set="layout" data-val="combined">รวมกราฟเดียว</button></span></span>
+      <span class="wq-row" id="yscale-ctl" style="gap:var(--cds-gap-xs)" hidden><span class="wq-muted">แกน Y</span>
+        <span class="wq-seg" role="group" aria-label="แกน Y"><button type="button" data-set="yscale" data-val="pct">% ของเกณฑ์</button><button type="button" data-set="yscale" data-val="log">ค่าจริง (log)</button><button type="button" data-set="yscale" data-val="linear">ค่าจริง (ปกติ)</button></span></span>
+    </div>
+    <div class="wq-legend" id="legend" data-draw="legend" data-source="series criteria"></div>
+    <div class="wq-panels" id="charts" data-draw="trend" data-source="trend series criteria">—</div>
+    <p class="wq-muted" id="note-split" style="margin-top:var(--cds-gap-md)">หนึ่งกราฟต่อหนึ่งพารามิเตอร์ หนึ่งเส้นต่อหนึ่งสถานที่ (ค่าเฉลี่ยรายเดือน) เส้นประคือเกณฑ์กำหนด จุดสีแดงคือเดือนที่มีผลไม่เป็นไปตามเกณฑ์ เมื่อมีเส้นเดียว แท่งสีเทาคือช่วงต่ำสุดถึงสูงสุดของเดือนนั้น</p>
+    <p class="wq-muted" id="note-pct" style="margin-top:var(--cds-gap-md)" hidden>ทุกพารามิเตอร์แสดงเป็น % ของค่าเกณฑ์ขีดบน เส้นประ 100% คือเกณฑ์ เกินเส้นนี้คือเกินเกณฑ์ พารามิเตอร์ที่เกณฑ์เป็นช่วง (คลอรีนอิสระคงเหลือ, pH) เทียบกับขีดบนเท่านั้น จุดสีแดงยังตัดสินจากทั้งขีดบนและขีดล่าง พารามิเตอร์ที่ไม่มีเกณฑ์จะไม่แสดงในโหมดนี้</p>
+    <p class="wq-muted" id="note-log" style="margin-top:var(--cds-gap-md)" hidden>แกน Y เป็นค่าจริงแบบลอการิทึม แต่ละช่องตารางห่างกัน 10 เท่า ค่าของแต่ละพารามิเตอร์อยู่ในหน่วยของตัวเอง (ดูในคำอธิบายเส้น) ค่าเฉลี่ยรายเดือนที่เป็น 0 หรือติดลบจะไม่แสดง เส้นประคือเกณฑ์ของแต่ละพารามิเตอร์ จุดสีแดงคือเดือนที่มีผลไม่เป็นไปตามเกณฑ์</p>
+    <p class="wq-muted" id="note-linear" style="margin-top:var(--cds-gap-md)" hidden>แกน Y เป็นค่าจริงแบบปกติ ค่าของแต่ละพารามิเตอร์อยู่ในหน่วยของตัวเอง พารามิเตอร์ที่ค่าน้อยกว่าตัวอื่นมากจะดูแบนติดพื้น เส้นประคือเกณฑ์ของแต่ละพารามิเตอร์ จุดสีแดงคือเดือนที่มีผลไม่เป็นไปตามเกณฑ์</p>
+  </section>
+
+  <section class="wq-card" id="stats">
+    <h2 class="wq-h">สถิติรายพารามิเตอร์</h2>
+    <div class="wq-scroll">
+      <table class="wq-table" data-source="stats" data-row-key="key">
+        <thead><tr>
+          <th data-field="name">พารามิเตอร์</th>
+          <th data-field="unit">หน่วย</th>
+          <th data-field="n" class="wq-num">จำนวนผล</th>
+          <th data-field="nd" class="wq-num">ต่ำกว่าขีดวัด / ไม่พบ</th>
+          <th data-field="min" class="wq-num">ต่ำสุด</th>
+          <th data-field="median" class="wq-num">มัธยฐาน</th>
+          <th data-field="mean" class="wq-num">เฉลี่ย</th>
+          <th data-field="max" class="wq-num">สูงสุด</th>
+          <th data-field="limit" class="wq-num">เกณฑ์</th>
+          <th data-field="exceed" class="wq-num">ไม่ผ่านเกณฑ์</th>
+        </tr></thead>
+        <tbody data-draw="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="wq-card" id="export">
+    <h2 class="wq-h">ส่งออกสรุปหนึ่งหน้า</h2>
+    <p class="wq-muted" style="margin-bottom:var(--cds-gap-md)">สร้างรูปภาพขนาด A4 จากช่วงเวลา สถานที่ที่ติ๊กเลือก พารามิเตอร์ในกราฟ และพารามิเตอร์ในตารางที่เลือกอยู่ หากไม่ดาวน์โหลดอัตโนมัติ ให้กดปุ่มดาวน์โหลดหรือคลิกขวาที่ภาพแล้วบันทึก</p>
+    <button class="wq-btn wq-btn-main" type="button" data-act="export">สร้างรูปภาพสรุป (PNG)</button>
+    <div data-draw="export" data-source="overview stats trend series"></div>
+  </section>
+
+  <details class="wq-notes" id="notes">
+    <summary>วิธีคำนวณและข้อจำกัด</summary>
+    <p>ต่ำสุด มัธยฐาน เฉลี่ย และสูงสุด คำนวณจากผลที่รายงานเป็นตัวเลขเท่านั้น ผลที่รายงานว่า ND หรือ “น้อยกว่า” ขีดจำกัดการตรวจวัด นับแยกในคอลัมน์ “ต่ำกว่าขีดวัด / ไม่พบ” และไม่นำมาคิดค่าเฉลี่ย ค่าเฉลี่ยของพารามิเตอร์ที่ตรวจไม่พบบ่อยจึงสูงกว่าความเป็นจริง</p>
+    <p>เกณฑ์คือเกณฑ์กำหนดคุณภาพน้ำประปา การประปานครหลวง ประกาศ ณ วันที่ 11 ตุลาคม 2565 และใช้เทียบกับผลตรวจทุกปี รวมถึงปีก่อนประกาศ ผล “มากกว่า 300” ของจุลินทรีย์ทั้งหมดไม่นับว่าเกินเกณฑ์ 500</p>
+    <p>ไฟล์ต้นทางไม่ระบุหน่วย หน่วยที่แสดงมาจากประกาศเกณฑ์ สารละลายเทียบกับเกณฑ์ปริมาณมวลสารที่ละลายทั้งหมด และสารไตรฮาโลมีเทนเทียบกับเกณฑ์ผลรวมอัตราส่วน (ไม่เกิน 1) ซึ่งเป็นข้อสันนิษฐาน ไม่ได้รวมคอลัมน์กลิ่น</p>
+  </details>
+</div>
+<p class="wq-footer">ข้อมูล: เคมีใหญ่.xlsx · เกณฑ์: เกณฑ์กำหนดคุณภาพน้ำประปา การประปานครหลวง ประกาศ ณ วันที่ 11 ตุลาคม 2565 · กราฟใช้ <a href="https://d3js.org">D3</a></p>
+</div>
+<script src="vendor/d3.min.js"></script>
+<script src="dash.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
