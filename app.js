@@ -139,6 +139,7 @@ dash.onData(() => {
   show('lead-some', o && o.exceed > 0);
   show('lead-none', o && o.samples > 0 && o.exceed === 0);
   show('lead-empty', o && o.samples === 0);
+  all('#tile-exceed').forEach((el) => el.classList.toggle('wq-tile-alert', !!(o && o.exceed > 0)));
   const p = dash.params(), lay = layoutOf(p), ys = yscaleOf(p);
   all('[data-set]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.set === 'layout' ? lay : ys) === b.dataset.val)));
   show('yscale-ctl', lay === 'combined');
@@ -242,7 +243,7 @@ dash.draw('legend', (box) => {
   if (!ser || !crit) { box.replaceChildren(); return; }
   const p = dash.params(), combined = layoutOf(p) === 'combined', multi = ser.length > 1;
   const items = [];
-  if (!combined || multi) items.push(...ser.map((s) => h('span', {className: 'wq-leg'}, swatch(s.color), s.series + ' · ' + fv(s.samples) + ' ตัวอย่าง')));
+  if (!combined || multi) items.push(...ser.map((s) => h('span', {className: 'wq-leg'}, multi && !combined ? lineSample(col(s.color), dashOf(s.color)) : swatch(s.color), s.series + ' · ' + fv(s.samples) + ' ตัวอย่าง')));
   if (combined) {
     items.push(...chartParams(p, crit).map((c, i) => h('span', {className: 'wq-leg'},
       lineSample(multi ? 'var(--color-fg-muted)' : col(i), multi ? dashOf(i) : []), c.name + (c.unit ? ' (' + c.unit + ')' : ''))));
@@ -304,9 +305,9 @@ const drawPanel = (panel, c, rows, t, colorOf, single) => {
   }
   const groups = d3.groups(rows, (r) => r.series);
   groups.forEach(([series, rs]) => {
-    const color = col(colorOf.get(series) || 0);
+    const color = col(colorOf.get(series) || 0), dash = single ? [] : dashOf(colorOf.get(series) || 0);
     svg.append('path').datum(rs).attr('fill', 'none').attr('stroke-width', 1.75).style('stroke', color)
-      .attr('d', d3.line().x(X).y((r) => s.y(r.mean)));
+      .attr('stroke-dasharray', dash.length ? dash.join(' ') : null).attr('d', d3.line().x(X).y((r) => s.y(r.mean)));
     svg.append('g').selectAll('circle').data(rs).join('circle').attr('cx', X).attr('cy', (r) => s.y(r.mean))
       .attr('r', (r) => (r.bad ? 3.5 : 2.5)).style('fill', (r) => (r.bad ? 'var(--cds-chart-status-critical)' : color));
   });
@@ -566,7 +567,9 @@ const makeImage = () => {
     const lw = (R - M) / 2;
     ser.forEach((s, i) => {
       const x = M + (i % 2) * lw, yy = y + Math.floor(i / 2) * 24;
-      g.fillStyle = canvasColor(s.color); g.fillRect(x, yy - 12, 14, 14);
+      if (combined) { g.fillStyle = canvasColor(s.color); g.fillRect(x, yy - 12, 14, 14); } else {
+        g.beginPath(); g.setLineDash(dashOf(s.color)); g.strokeStyle = canvasColor(s.color); g.lineWidth = 3; g.moveTo(x - 4, yy - 5); g.lineTo(x + 16, yy - 5); g.stroke(); g.setLineDash([]);
+      }
       T(fit(s.series + ' · ' + fv(s.samples) + ' ตัวอย่าง', 16, lw - 30), x + 22, yy, 16);
     });
     y += Math.ceil(ser.length / 2) * 24 + 14;
@@ -634,8 +637,8 @@ const makeImage = () => {
       if (single) rs.forEach((r) => rule(X(r), s.y(r.min), X(r), s.y(r.max), '#c8c8c8'));
       d3.groups(rs, (r) => r.series).forEach(([series, list]) => {
         const color = canvasColor(colorOf.get(series) || 0);
-        g.beginPath(); g.strokeStyle = color; g.lineWidth = 2;
-        list.forEach((r, j) => (j ? g.lineTo(X(r), s.y(r.mean)) : g.moveTo(X(r), s.y(r.mean)))); g.stroke();
+        g.beginPath(); g.setLineDash(single ? [] : dashOf(colorOf.get(series) || 0)); g.strokeStyle = color; g.lineWidth = 2;
+        list.forEach((r, j) => (j ? g.lineTo(X(r), s.y(r.mean)) : g.moveTo(X(r), s.y(r.mean)))); g.stroke(); g.setLineDash([]);
         list.forEach((r) => { g.beginPath(); g.fillStyle = r.bad ? BAD : color; g.arc(X(r), s.y(r.mean), r.bad ? 4 : 3, 0, 7); g.fill(); });
       });
     });
@@ -698,4 +701,6 @@ dash.draw('export', (box) => {
   box.replaceChildren(link, h('img', {className: 'wq-preview', src: url, alt: 'รูปภาพสรุปสถิติคุณภาพน้ำประปาหนึ่งหน้า'}));
   shown = sig;
   link.click();
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  box.scrollIntoView({behavior: still ? 'auto' : 'smooth', block: 'nearest'});
 });
