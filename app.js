@@ -90,6 +90,23 @@ dash.calc('trend', {
   },
 });
 
+dash.calc('micro', {
+  title: 'ผลตรวจพบ/ไม่พบรายเดือน',
+  description: 'จำนวนตัวอย่างที่ตรวจและจำนวนที่พบ อี.โคไล และโคลิฟอร์มแบคทีเรีย รายเดือน แยกตามสถานที่ที่เลือก',
+  inputs: ['picked', 'criteria'],
+  fn: (picked, criteria) => {
+    const bySite = siteList(dash.params()).length > 0;
+    const out = [];
+    criteria.filter((c) => c.kind === 'found').forEach((c) => {
+      const tested = picked.filter((s) => s[c.key] === 'พบ' || s[c.key] === 'ไม่พบ');
+      d3.rollups(tested, (g) => ({n: g.length, found: g.filter((s) => s[c.key] === 'พบ').length}),
+        (s) => (bySite ? s.site : ALL_SITES), (s) => s.date.slice(0, 7)).forEach(([series, months]) =>
+        months.forEach(([month, o]) => out.push({key: c.key + '|' + series + '|' + month, param: c.key, series, month, ...o})));
+    });
+    return out.sort((a, b) => d3.ascending(a.param, b.param) || d3.ascending(a.series, b.series) || d3.ascending(a.month, b.month));
+  },
+});
+
 const DAY = new Intl.DateTimeFormat('th-TH', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'});
 const MON = new Intl.DateTimeFormat('th-TH', {month: 'short', year: '2-digit', timeZone: 'UTC'});
 const fd = (s) => (s ? DAY.format(new Date(s)) : '—');
@@ -423,6 +440,85 @@ dash.draw('trend', (box) => {
   params.forEach((c, i) => drawPanel(panels[i], c, rows.filter((r) => r.param === c.key), t, colorOf, ser.length === 1));
 });
 
+// Found / not-found results: monthly bars of samples tested (stacked by site), red marker on months with any "found".
+const microLayout = (rows, ser, t, x0, x1, y0, y1) => {
+  const keys = ser.map((s) => s.series);
+  const months = d3.groups(rows, (r) => r.month).map(([month, rs]) => {
+    const by = new Map(rs.map((r) => [r.series, r]));
+    return {month, by, n: d3.sum(rs, (r) => r.n), found: d3.sum(rs, (r) => r.found)};
+  });
+  const stack = d3.stack().keys(keys).value((d, k) => (d.by.get(k) ? d.by.get(k).n : 0))(months);
+  const pad = 16 * 864e5;
+  const x = d3.scaleUtc().domain([new Date(+t[0] - pad), new Date(+t[1] + pad)]).range([x0, x1]);
+  const span = Math.max(1, d3.utcMonth.count(t[0], t[1]) + 1);
+  const bw = Math.max(1.5, Math.min(16, (x1 - x0) / span * 0.7));
+  const y = d3.scaleLinear().domain([0, Math.max(1, d3.max(months, (m) => m.n))]).nice().range([y0, y1]);
+  const ticks = y.ticks(3).filter((v) => Number.isInteger(v));
+  return {months, stack, x, y, bw, ticks};
+};
+const microSummary = (rows) => {
+  const n = d3.sum(rows, (r) => r.n), f = d3.sum(rows, (r) => r.found);
+  return 'เกณฑ์: ไม่พบ · ตรวจ ' + fv(n) + ' ตัวอย่าง · พบ ' + fv(f) + ' ครั้ง';
+};
+
+const drawMicro = (panel, c, rows, t, colorOf, ser) => {
+  if (!rows.length) { panel.append(h('p', {className: 'wq-muted'}, 'ไม่มีผลตรวจในตัวกรองที่เลือก')); return; }
+  const single = ser.length === 1;
+  const W = Math.max(260, panel.clientWidth || 420), H = 170;
+  const svg = d3.create('svg').attr('width', '100%').attr('viewBox', '0 0 ' + W + ' ' + H).attr('role', 'img')
+    .attr('aria-label', 'จำนวนตัวอย่างที่ตรวจ' + c.name + 'รายเดือน และเดือนที่ตรวจพบ');
+  const tip = h('div', {className: 'wq-tip', hidden: true});
+  panel.append(svg.node(), tip);
+  let L = microLayout(rows, ser, t, 0, W, H - 26, 16);
+  const gy = svg.append('g').attr('class', 'wq-axis').call(d3.axisLeft(L.y).tickValues(L.ticks).tickFormat(d3.format('d')));
+  const ml = d3.max(gy.selectAll('text').nodes(), (n) => n.getComputedTextLength()) + 14;
+  gy.attr('transform', 'translate(' + ml + ',0)');
+  L = microLayout(rows, ser, t, ml, W - 12, H - 26, 16);
+  const X = (m) => L.x(tOf(m));
+  svg.append('g').attr('class', 'wq-grid').selectAll('line').data(L.ticks).join('line').attr('x1', ml).attr('x2', W - 12).attr('y1', L.y).attr('y2', L.y);
+  svg.append('g').attr('class', 'wq-axis').attr('transform', 'translate(0,' + (H - 26) + ')')
+    .call(d3.axisBottom(L.x).ticks(Math.max(2, Math.floor(W / 130))).tickFormat((d) => MON.format(d)).tickSizeOuter(0));
+  L.stack.forEach((layer) => {
+    const fill = single ? 'var(--cds-chart-muted)' : col(colorOf.get(layer.key) || 0);
+    svg.append('g').selectAll('rect').data(layer.filter((d) => d[1] > d[0])).join('rect')
+      .attr('x', (d) => X(d.data) - L.bw / 2).attr('width', L.bw).attr('y', (d) => L.y(d[1])).attr('height', (d) => L.y(d[0]) - L.y(d[1]))
+      .style('fill', fill);
+  });
+  const hits = L.months.filter((m) => m.found > 0);
+  svg.append('g').selectAll('circle').data(hits).join('circle').attr('cx', X).attr('cy', (m) => L.y(m.n) - 7).attr('r', 4.5)
+    .style('fill', 'var(--cds-chart-status-critical)');
+  svg.append('g').selectAll('text').data(hits).join('text').attr('x', (m) => X(m) + 7).attr('y', (m) => L.y(m.n) - 3)
+    .style('fill', 'var(--cds-chart-status-critical)').style('font-size', 'var(--cds-font-size-caption)').style('font-family', 'var(--font-anthropic-sans)')
+    .text((m) => 'พบ ' + m.found);
+  const guide = svg.append('line').attr('y1', 16).attr('y2', H - 26).style('stroke', 'var(--cds-chart-axis)').attr('visibility', 'hidden');
+  svg.on('pointermove', (ev) => {
+    const px = d3.pointer(ev)[0] * (W / (panel.clientWidth || W));
+    const m = d3.least(L.months, (d) => Math.abs(X(d) - px));
+    guide.attr('x1', X(m)).attr('x2', X(m)).attr('visibility', 'visible');
+    const lines = ser.filter((s) => m.by.get(s.series)).map((s) => {
+      const r = m.by.get(s.series);
+      return h('div', {className: 'wq-leg'}, single ? '' : swatch(s.color), (single ? '' : s.series + ': ') + 'ตรวจ ' + r.n + ' · ' + (r.found ? 'พบ ' + r.found : 'ไม่พบ'));
+    });
+    tip.replaceChildren(h('b', {}, fm(m.month)), ...lines);
+    tip.hidden = false;
+    const k = panel.clientWidth / W, left = X(m) * k;
+    tip.style.left = Math.max(0, Math.min(panel.clientWidth - tip.offsetWidth, left + 12 - (left > panel.clientWidth / 2 ? tip.offsetWidth + 24 : 0))) + 'px';
+    tip.style.top = '28px';
+  }).on('pointerleave', () => { tip.hidden = true; guide.attr('visibility', 'hidden'); });
+};
+
+dash.draw('micro', (box) => {
+  const rows = ok('micro'), crit = ok('criteria'), ser = ok('series');
+  if (!rows || !crit || !ser) { box.textContent = '—'; return; }
+  const params = crit.filter((c) => c.kind === 'found');
+  const colorOf = new Map(ser.map((s) => [s.series, s.color]));
+  const t = rows.length ? timeDomain(rows) : null;
+  const panels = params.map((c) => h('div', {className: 'wq-panel', id: 'micro-' + c.key},
+    h('div', {className: 'wq-panel-h'}, c.name + ' ', h('span', {}, microSummary(rows.filter((r) => r.param === c.key))))));
+  box.replaceChildren(...panels);
+  params.forEach((c, i) => drawMicro(panels[i], c, rows.filter((r) => r.param === c.key), t, colorOf, ser));
+});
+
 // Canvas colors: dash.colors are CSS variables, so read their current values.
 const FALLBACK = ['#2a6fb0', '#e67e22', '#27ae60', '#8e44ad', '#d35400', '#16a085', '#b7950b', '#5d6d7e'];
 const canvasColor = (i) => {
@@ -489,7 +585,8 @@ const makeImage = () => {
   const cols = params.length > 1 ? 2 : 1, nr = Math.ceil(params.length / cols);
   const ph = nr === 1 ? 250 : nr === 2 ? 210 : 180;
   const tableNeed = 30 + (rows.length + 1) * 14;
-  const chartsH = params.length && tr.length ? (combined ? Math.max(360, Math.min(620, foot - 40 - y - tableNeed)) : nr * (ph + 46)) : 0;
+  const mic = ok('micro') || [], microNeed = mic.length ? 210 : 0;
+  const chartsH = params.length && tr.length ? (combined ? Math.max(360, Math.min(620, foot - 40 - y - tableNeed - microNeed)) : nr * (ph + 46)) : 0;
   let note = '';
   if (chartsH && combined && y + chartsH + tableNeed <= foot - 20) {
     const model = combinedModel(tr, params, ser, mode);
@@ -547,6 +644,29 @@ const makeImage = () => {
     note = 'ไม่ได้ใส่กราฟเพราะตารางมีพารามิเตอร์มากเกินกว่าจะพอในหน้าเดียว ลดพารามิเตอร์ในตารางเพื่อให้มีกราฟ';
   }
   if (note) { T(note, M, y, 15, DIM); y += 30; }
+  if (microNeed && y + microNeed + tableNeed <= foot - 20) {
+    const mparams = crit.filter((c) => c.kind === 'found'), t = timeDomain(mic), pw = (R - M - 32) / 2;
+    mparams.forEach((c, i) => {
+      const px = M + i * (pw + 32), rs = mic.filter((r) => r.param === c.key);
+      T(fit(c.name + '  ·  ' + microSummary(rs), 15, pw), px, y + 4, 15, INK, 'left', 600);
+      if (!rs.length) { T('ไม่มีผลตรวจในตัวกรองที่เลือก', px, y + 40, 14, DIM); return; }
+      const top = y + 24, bottom = y + microNeed - 50;
+      setFont(13);
+      let L = microLayout(rs, ser, t, px + 40, px + pw, bottom, top);
+      const X = (m) => L.x(tOf(m));
+      L.ticks.forEach((v) => { rule(px + 40, L.y(v), px + pw, L.y(v), '#eee'); T(String(v), px + 32, L.y(v) + 5, 13, DIM, 'right'); });
+      L.x.ticks(Math.max(3, Math.floor(pw / 120))).forEach((d) => T(MON.format(d), L.x(d), bottom + 20, 13, DIM, 'center'));
+      L.stack.forEach((layer) => {
+        g.fillStyle = single ? '#c4c2bc' : canvasColor(colorOf.get(layer.key) || 0);
+        layer.forEach((d) => { if (d[1] > d[0]) g.fillRect(X(d.data) - L.bw / 2, L.y(d[1]), L.bw, L.y(d[0]) - L.y(d[1])); });
+      });
+      L.months.filter((m) => m.found > 0).forEach((m) => {
+        g.beginPath(); g.fillStyle = BAD; g.arc(X(m), L.y(m.n) - 8, 5, 0, 7); g.fill();
+        T('พบ ' + m.found, X(m) + 8, L.y(m.n) - 4, 13, BAD);
+      });
+    });
+    y += microNeed;
+  }
   const rh = Math.min(30, (foot - 30 - y) / (rows.length + 1)), fs = Math.max(9, Math.min(15, rh * 0.62));
   const heads = ['จำนวนผล', 'ต่ำกว่าขีดวัด', 'ต่ำสุด', 'มัธยฐาน', 'เฉลี่ย', 'สูงสุด', 'เกณฑ์', 'ไม่ผ่านเกณฑ์'];
   const keys = ['n', 'nd', 'min', 'median', 'mean', 'max', 'limit', 'exceed'];
