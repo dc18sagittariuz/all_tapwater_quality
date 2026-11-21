@@ -102,6 +102,7 @@ const all = (sel) => [...root.querySelectorAll(sel)];
 const col = (i) => dash.colors[i % dash.colors.length];
 const limText = (c) => (c.lo != null ? 'เกณฑ์ ' + c.lo + '–' + c.hi : c.hi != null ? 'เกณฑ์ ≤ ' + c.hi : '');
 const tOf = (r) => new Date(r.month + '-01');
+const limLabel = (c, v) => (c.lo != null ? (v === c.lo ? 'เกณฑ์ขีดล่าง ' : 'เกณฑ์ขีดบน ') : 'เกณฑ์ ≤ ') + fv(v) + (c.unit ? ' ' + c.unit : '');
 const swatch = (i) => { const s = h('span', {className: 'wq-sw'}); s.style.background = col(i); return s; };
 const DASH = [[], [6, 4], [2, 3], [9, 3, 2, 3], [14, 4], [4, 2, 1, 2]];
 const dashOf = (i) => DASH[i % DASH.length];
@@ -247,7 +248,7 @@ dash.draw('rows', (tb) => {
 // One parameter's scales. With one line the y range covers min–max bars; with several, the monthly means.
 const panelScales = (rows, c, single, t, x0, x1, y0, y1) => {
   const lo = d3.min(rows, (r) => (single ? r.min : r.mean)), top = d3.max(rows, (r) => (single ? r.max : r.mean));
-  const lims = [c.lo, c.hi].filter((v) => v != null && v <= Math.max(top, 1e-12) * 3);
+  const lims = [c.lo, c.hi].filter((v) => v != null);
   return {lims, x: d3.scaleUtc().domain(t).range([x0, x1]),
     y: d3.scaleLinear().domain([d3.min([lo, ...lims]), d3.max([top, ...lims])]).nice().range([y0, y1])};
 };
@@ -273,9 +274,13 @@ const drawPanel = (panel, c, rows, t, colorOf, single) => {
   svg.append('g').attr('class', 'wq-grid').selectAll('line').data(s.y.ticks(4)).join('line')
     .attr('x1', ml).attr('x2', W - 12).attr('y1', s.y).attr('y2', s.y);
   svg.append('g').attr('class', 'wq-axis').attr('transform', 'translate(0,' + (H - 26) + ')')
-    .call(d3.axisBottom(s.x).ticks(Math.max(2, Math.floor(W / 90))).tickFormat((d) => MON.format(d)).tickSizeOuter(0));
+    .call(d3.axisBottom(s.x).ticks(Math.max(2, Math.floor(W / 130))).tickFormat((d) => MON.format(d)).tickSizeOuter(0));
   svg.append('g').selectAll('line').data(s.lims).join('line').attr('x1', ml).attr('x2', W - 12).attr('y1', s.y).attr('y2', s.y)
-    .attr('stroke-dasharray', '5 4').style('stroke', 'var(--cds-chart-reference)');
+    .attr('stroke-dasharray', '6 4').attr('stroke-width', 1.25).style('stroke', 'var(--cds-chart-status-critical)');
+  svg.append('g').selectAll('text').data(s.lims).join('text').attr('class', 'wq-lim-label')
+    .attr('x', W - 14).attr('y', (v) => (s.y(v) < 22 ? s.y(v) + 14 : s.y(v) - 5)).attr('text-anchor', 'end')
+    .style('fill', 'var(--cds-chart-status-critical)').style('font-size', 'var(--cds-font-size-caption)').style('font-family', 'var(--font-anthropic-sans)')
+    .style('paint-order', 'stroke').style('stroke', 'var(--color-panel)').style('stroke-width', 3).text((v) => limLabel(c, v));
   if (single) {
     svg.append('g').selectAll('line').data(rows).join('line').attr('x1', X).attr('x2', X)
       .attr('y1', (r) => s.y(r.min)).attr('y2', (r) => s.y(r.max)).style('stroke', 'var(--cds-chart-muted)');
@@ -326,7 +331,7 @@ const combinedNote = (m) => [m.skipped.length ? 'ไม่มีเกณฑ์ 
 const combinedScales = (model, mode, t, x0, x1, y0, y1) => {
   const ys = model.lines.flatMap((l) => l.pts.map((q) => q.y));
   const lo = d3.min(ys), hi = d3.max(ys);
-  const refs = model.refs.filter((r) => (mode === 'pct' ? true : mode === 'log' ? r.y > 0 && r.y >= lo / 5 && r.y <= hi * 5 : r.y <= Math.max(hi, 1e-12) * 3));
+  const refs = model.refs.filter((r) => (mode === 'pct' ? true : mode === 'log' ? r.y > 0 : r.y <= Math.max(hi, 1e-12) * 3));
   const dom = mode === 'pct' ? [0, Math.max(hi, 100)] : mode === 'log' ? [d3.min([lo, ...refs.map((r) => r.y)]), d3.max([hi, ...refs.map((r) => r.y)])]
     : [Math.min(0, lo), d3.max([hi, ...refs.map((r) => r.y)])];
   const y = (mode === 'log' ? d3.scaleLog() : d3.scaleLinear()).domain(dom).nice().range([y0, y1]);
@@ -339,7 +344,7 @@ const combinedScales = (model, mode, t, x0, x1, y0, y1) => {
   const fmt = (v) => (mode === 'pct' ? fv(v) + '%' : fv(v));
   return {x: d3.scaleUtc().domain(t).range([x0, x1]), y, ticks, fmt, refs};
 };
-const refName = (r) => (r.c ? 'เกณฑ์' + (r.c.lo === r.y ? 'ขีดล่าง ' : ' ') + r.c.name : 'เกณฑ์ (100%)');
+const refName = (r) => (r.c ? r.c.name + ' · ' + limLabel(r.c, r.y) : 'เกณฑ์ (100% ของค่าเกณฑ์)');
 const tipLine = (l, q, mode) => (l.series && l.series !== ALL_SITES ? l.series + ' · ' : '') + l.c.name + ': ' + fv(q.raw) +
   (l.c.unit ? ' ' + l.c.unit : '') + (mode === 'pct' ? ' (' + fv(Math.round(q.y)) + '% ของเกณฑ์)' : '') + ' · ' + q.n + ' ผล' + (q.bad ? ' · ไม่ผ่าน ' + q.bad : '');
 
@@ -363,7 +368,7 @@ const drawCombined = (box, rows, params, ser, mode) => {
   const X = (q) => s.x(tOf(q));
   svg.append('g').attr('class', 'wq-grid').selectAll('line').data(s.ticks).join('line').attr('x1', ml).attr('x2', W - 12).attr('y1', s.y).attr('y2', s.y);
   svg.append('g').attr('class', 'wq-axis').attr('transform', 'translate(0,' + (H - 26) + ')')
-    .call(d3.axisBottom(s.x).ticks(Math.max(2, Math.floor(W / 90))).tickFormat((d) => MON.format(d)).tickSizeOuter(0));
+    .call(d3.axisBottom(s.x).ticks(Math.max(2, Math.floor(W / 130))).tickFormat((d) => MON.format(d)).tickSizeOuter(0));
   const refColor = (r) => (r.color == null ? 'var(--cds-chart-reference)' : col(r.color));
   svg.append('g').selectAll('line').data(s.refs).join('line').attr('x1', ml).attr('x2', W - 12).attr('y1', (r) => s.y(r.y)).attr('y2', (r) => s.y(r.y))
     .attr('stroke-dasharray', (r) => (r.dash.length ? r.dash.join(' ') : '5 4')).attr('stroke-width', 1).style('stroke', refColor).style('opacity', 0.8);
@@ -525,7 +530,10 @@ const makeImage = () => {
       const X = (r) => s.x(tOf(r));
       s.y.ticks(4).forEach((v) => { rule(px + 62, s.y(v), px + pw, s.y(v), '#eee'); T(fv(v), px + 54, s.y(v) + 5, 13, DIM, 'right'); });
       s.x.ticks(Math.max(3, Math.floor(pw / 110))).forEach((d) => T(MON.format(d), s.x(d), bottom + 20, 13, DIM, 'center'));
-      s.lims.forEach((v) => rule(px + 62, s.y(v), px + pw, s.y(v), BAD, [6, 5]));
+      s.lims.forEach((v) => {
+        rule(px + 62, s.y(v), px + pw, s.y(v), BAD, [6, 5], 1.5);
+        T(limLabel(c, v), px + pw - 2, s.y(v) < top + 20 ? s.y(v) + 15 : s.y(v) - 5, 13, BAD, 'right');
+      });
       if (single) rs.forEach((r) => rule(X(r), s.y(r.min), X(r), s.y(r.max), '#c8c8c8'));
       d3.groups(rs, (r) => r.series).forEach(([series, list]) => {
         const color = canvasColor(colorOf.get(series) || 0);
